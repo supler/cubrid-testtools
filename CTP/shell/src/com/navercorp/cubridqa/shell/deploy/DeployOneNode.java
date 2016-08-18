@@ -67,7 +67,7 @@ public class DeployOneNode {
 
 		if(context.isWindows()) {
 			String ret="";
-			deploy_build_on_windows();
+			deploy_build();
 			//update CUBRID ports
 			updateCUBRIDConfigurations();
 			
@@ -81,7 +81,7 @@ public class DeployOneNode {
 				}
 			}
 		} else {
-			deploy_build_on_linux();
+			deploy_build();
 			//update CUBRID ports
 			updateCUBRIDConfigurations();
 			backup_linux();
@@ -139,7 +139,7 @@ public class DeployOneNode {
 		}
 	}
 	
-	private void deploy_build_on_linux() {
+	private void deploy_build() {
 		cleanProcess();
 		
 		String role = context.getProperty("main.testing.role", "").trim();
