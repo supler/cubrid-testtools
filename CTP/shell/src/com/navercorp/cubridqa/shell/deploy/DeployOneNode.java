@@ -65,10 +65,18 @@ public class DeployOneNode {
 	public void deploy() {
 		deploy_ctp();
 
-		if (context.isWindows()) {
-			String ret = "";
-			deploy_build_on_windows();
-			// update CUBRID ports
+		if(context.isWindows()) {
+			String ret="";
+			while(true){
+				if(deploy_build_on_windows()){
+					break;
+				}
+				
+				System.out.println("[INFO]: Retry to install build!");
+				CommonUtils.sleep(5);
+			}
+			
+			//update CUBRID ports
 			updateCUBRIDConfigurations();
 
 			while (true) {
@@ -79,15 +87,23 @@ public class DeployOneNode {
 				}
 			}
 		} else {
-			deploy_build_on_linux();
-			// update CUBRID ports
+			while (true) {
+				if (deploy_build_on_linux()) {
+					break;
+				}
+
+				System.out.println("[INFO]: Retry to install build!");
+				CommonUtils.sleep(5);
+			}
+			//update CUBRID ports
 			updateCUBRIDConfigurations();
 			backup_linux();
 		}
 
 	}
-
-	private void deploy_build_on_windows() {
+	
+	private boolean deploy_build_on_windows() {
+		boolean isSucc = true;
 		cleanProcess();
 
 		String role = context.getProperty(
@@ -115,18 +131,26 @@ public class DeployOneNode {
 		if (Integer.parseInt(arr[0]) >= 10) {
 			scripts.addCommand("echo inquire_on_exit=3 >> $CUBRID/conf/cubrid.conf");
 		}
-		scripts.addCommand("echo error_log_size=800000000 >> $CUBRID/conf/cubrid.conf");
+	        scripts.addCommand("echo error_log_size=800000000 >> $CUBRID/conf/cubrid.conf");
 
 		String result;
 		try {
 			result = ssh.execute(scripts);
+			if(result!=null && (result.indexOf("ERROR") != -1 || result.indexOf("No such file") != -1)){
+				isSucc = false;
+				log.println("[ERROR] build install fail!");
+			}
 			log.println(result);
 		} catch (Exception e) {
+			isSucc = false;
 			log.print("[ERROR] " + e.getMessage());
 		}
+		
+		return isSucc;
 	}
-
-	private void deploy_build_on_linux() {
+	
+	private boolean deploy_build_on_linux() {
+		boolean isSucc = true;
 		cleanProcess();
 
 		String buildUrl = context.getCubridPackageUrl();
@@ -161,10 +185,18 @@ public class DeployOneNode {
 		String result;
 		try {
 			result = ssh.execute(scripts);
+			if(result!=null && (result.indexOf("ERROR") != -1 || result.indexOf("No such file") != -1)){
+				isSucc = false;
+				log.println("[ERROR] build install fail!");
+			}
+			
 			log.println(result);
 		} catch (Exception e) {
+			isSucc = false;
 			log.print("[ERROR] " + e.getMessage());
 		}
+		
+		return isSucc;
 	}
 
 	private void deploy_ctp() {
@@ -279,6 +311,8 @@ public class DeployOneNode {
 				scripts.addCommand("ini.sh -s 'broker' -u MASTER_SHM_ID="
 						+ cubridPortId + " $CUBRID/conf/cubrid_broker.conf");
 			}
+		}else{
+			scripts.addCommand("ini.sh -s 'broker' -u MASTER_SHM_ID=" + cubridBrokerSHMId + " $CUBRID/conf/cubrid_broker.conf");
 		}
 
 		String result = "";
